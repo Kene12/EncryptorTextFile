@@ -1,7 +1,6 @@
 from Crypto.Cipher import DES
 from Crypto.Random import get_random_bytes
-from tkinter import filedialog
-import tkinter as tk
+from tkinter import filedialog, Tk, Label, Button, StringVar, Entry, messagebox
 import art
 
 def pad(text):
@@ -40,95 +39,132 @@ def read_key_from_file(filename):
         key = file.read()
     return key
 
-def print_menu():
-    print(art.text2art("Encrypt and Decrypt"))  # Assuming 'art' is a module for ASCII art
-    print("\n[-] SELECT AN OPTION TO BEGIN: [-]\n\n1. File Encrypt\n2. Decrypt\n3. Generate and Save Key\n4. Read Key from File\n5. Exit")
+class CryptoApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Encryption and Decryption App")
 
-def encrypt_file():
-    root = tk.Tk()
-    root.withdraw()
+        self.choice_var = StringVar()
+        self.create_ui()
 
-    input_filename = filedialog.askopenfilename(title="Select input file", filetypes=[("Text files", "*.txt")])
-    if not input_filename:
-        print("No input file selected. Exiting.")
-        return
+    def create_ui(self):
+        Label(self.root, text=art.text2art("Encrypt and Decrypt")).pack(pady=10)
 
-    output_filename = filedialog.asksaveasfilename(title="Select output file", defaultextension=".enc", filetypes=[("Encrypted files", "*.enc")])
-    if not output_filename:
-        print("No output file selected. Exiting.")
-        return
+        Button(self.root, text="Encrypt File", command=self.encrypt_file).pack()
+        Button(self.root, text="Decrypt File", command=self.decrypt_file).pack()
+        Button(self.root, text="Generate and Save Key", command=self.generate_and_save_key).pack()
+        Button(self.root, text="Read Key", command=self.read_key).pack()
+        Button(self.root, text="Exit", command=self.root.destroy).pack(pady=10)
 
-    key = generate_des_key()
+    def encrypt_file(self):
+        root = Tk()
+        root.withdraw()
 
-    with open(input_filename, 'rb') as file:
-        plaintext = file.read()
+        input_filename = filedialog.askopenfilename(title="Select input file", filetypes=[("Text files", "*.txt")])
 
-    ciphertext = des_encrypt(key, plaintext)
+        if not input_filename:
+            messagebox.showinfo("Error", "No input file selected. Exiting.")
+            return
 
-    with open(output_filename, 'wb') as file:
-        file.write(ciphertext)
+        output_filename = filedialog.asksaveasfilename(title="Select output file", defaultextension=".enc", filetypes=[("Encrypted files", "*.enc")])
 
-    print("File encrypted and saved to:", output_filename)
-    print("Encryption Key:", key.hex())
+        if not output_filename:
+            messagebox.showinfo("Error", "No output file selected. Exiting.")
+            return
 
-def decrypt_file():
-    root = tk.Tk()
-    root.withdraw()
+        generate_key_option = messagebox.askquestion("Key Generation", "Do you want to generate a new key?")
 
-    input_filename = filedialog.askopenfilename(title="Select input file", filetypes=[("Encrypted files", "*.enc")])
-    if not input_filename:
-        print("No input file selected. Exiting.")
-        return
+        if generate_key_option == 'yes':
+            key = generate_des_key()
+            key_filename = filedialog.asksaveasfilename(title="Save Key to File", defaultextension=".key", filetypes=[("Key files", "*.key")])
 
-    output_filename = filedialog.asksaveasfilename(title="Select output file", defaultextension=".txt", filetypes=[("Text files", "*.txt")])
-    if not output_filename:
-        print("No output file selected. Exiting.")
-        return
+            if not key_filename:
+                messagebox.showinfo("Error", "No key file selected. Exiting.")
+                return
 
-    key_hex = input("Enter the encryption key (in hex): ")
-    key = bytes.fromhex(key_hex)
+            save_key_to_file(key, key_filename)
+            messagebox.showinfo("Key Information", "New key generated and saved to:\n" + key_filename)
+        else:
+            key_filename = filedialog.askopenfilename(title="Select key file", filetypes=[("Key files", "*.key")])
 
-    with open(input_filename, 'rb') as file:
-        ciphertext = file.read()
+            if not key_filename:
+                messagebox.showinfo("Error", "No key file selected. Exiting.")
+                return
 
-    plaintext = des_decrypt(key, ciphertext)
+            key = read_key_from_file(key_filename)
+            messagebox.showinfo("Key Information", "Using existing key from:\n" + key_filename)
 
-    with open(output_filename, 'wb') as file:
-        file.write(plaintext)
+        with open(input_filename, 'rb') as file:
+            plaintext = file.read()
 
-    print("File decrypted and saved to:", output_filename)
+        ciphertext = des_encrypt(key, plaintext)
 
-def generate_and_save_key():
-    key = generate_des_key()
-    output_filename = filedialog.asksaveasfilename(title="Save Key to File", defaultextension=".key", filetypes=[("Key files", "*.key")])
-    if not output_filename:
-        print("No output file selected. Exiting.")
-        return
+        with open(output_filename, 'wb') as file:
+            file.write(ciphertext)
 
-    save_key_to_file(key, output_filename)
+        messagebox.showinfo("Encryption Information", "File encrypted and saved to:\n" + output_filename + "\nEncryption Key:\n" + key.hex())
+        root.destroy()
 
-def read_key():
-    key_file = filedialog.askopenfilename(title="Select key file", filetypes=[("Key files", "*.key")])
-    if not key_file:
-        print("No key file selected. Exiting.")
-        return
-    key = read_key_from_file(key_file)
-    print("Key read successfully:", key.hex())
+    def decrypt_file(self):
+        root = Tk()
+        root.withdraw()
 
-# Example usage:
-while True:
-    print_menu()
-    choice = input("Enter your choice (1, 2, 3, 4, or 5): ")
+        input_filename = filedialog.askopenfilename(title="Select input file", filetypes=[("Encrypted files", "*.enc")])
 
-    if choice == '1':
-        encrypt_file()
-    elif choice == '2':
-        decrypt_file()
-    elif choice == '3':
-        generate_and_save_key()
-    elif choice == '4':
-        read_key()
-    elif choice == '5':
-        exit()
-    else:
-        print("Invalid choice. Please try again.")
+        if not input_filename:
+            messagebox.showinfo("Error", "No input file selected. Exiting.")
+            return
+
+        key_filename = filedialog.askopenfilename(title="Select key file", filetypes=[("Key files", "*.key")])
+
+        if not key_filename:
+            messagebox.showinfo("Error", "No key file selected. Exiting.")
+            return
+
+        key = read_key_from_file(key_filename)
+
+        output_filename = filedialog.asksaveasfilename(title="Select output file", defaultextension=".txt", filetypes=[("Text files", "*.txt")])
+
+        if not output_filename:
+            messagebox.showinfo("Error", "No output file selected. Exiting.")
+            return
+
+        with open(input_filename, 'rb') as file:
+            ciphertext = file.read()
+
+        plaintext = des_decrypt(key, ciphertext)
+
+        with open(output_filename, 'wb') as file:
+            file.write(plaintext)
+
+        messagebox.showinfo("Decryption Information", "File decrypted and saved to:\n" + output_filename)
+        root.destroy()
+
+    def generate_and_save_key(self):
+        key = generate_des_key()
+        output_filename = filedialog.asksaveasfilename(title="Save Key to File", defaultextension=".key", filetypes=[("Key files", "*.key")])
+
+        if not output_filename:
+            messagebox.showinfo("Error", "No output file selected. Exiting.")
+            return
+
+        save_key_to_file(key, output_filename)
+        messagebox.showinfo("Key Information", "New key generated and saved to:\n" + output_filename)
+
+    def read_key(self):
+        key_file = filedialog.askopenfilename(title="Select key file", filetypes=[("Key files", "*.key")])
+
+        if not key_file:
+            messagebox.showinfo("Error", "No key file selected. Exiting.")
+            return
+
+        key = read_key_from_file(key_file)
+        messagebox.showinfo("Key Information", "Key read successfully:\n" + key.hex())
+
+def main():
+    root = Tk()
+    app = CryptoApp(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
